@@ -1,0 +1,166 @@
+import requests
+from PIL import Image, ImageTk
+import tkinter as tk
+from tkinter import messagebox
+import random
+import os
+
+# Function to download an image from a URL
+def download_image(url, save_path):
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(save_path, 'wb') as file:
+            file.write(response.content)
+
+# Download the background image if not already present
+background_url = "https://t4.ftcdn.net/jpg/05/79/54/53/360_F_579545387_6JuKZXKyBuvrGTVxcCIXPZnE5cr41vC9.jpg"
+background_path = "background.jpg"
+if not os.path.exists(background_path):
+    download_image(background_url, background_path)
+
+# Dictionary of words with their descriptions
+word_descriptions = {
+    "python": "A popular programming language, often used in web development and data science.",
+    "hangman": "A word guessing game where incorrect guesses lead to drawing a hanging person.",
+    "programming": "The process of writing computer software or code.",
+    "developer": "A person who creates computer programs or applications.",
+    "interface": "A shared boundary between different systems or devices, often for communication."
+}
+
+class HangmanGame:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Hangman Game")
+        self.root.state('zoomed')  # Start maximized
+        self.root.resizable(True, True)  # Allow resizing
+        self.word = random.choice(list(word_descriptions.keys()))
+        self.description = word_descriptions[self.word]
+        self.guessed_word = ["_"] * len(self.word)
+        self.tries = 6
+
+        self.create_widgets()
+        self.root.bind('<Configure>', self.resize_background)  # Bind resize event
+        self.root.bind('<Key>', self.on_key_press)  # Bind keyboard key press to guess a letter
+
+    def create_widgets(self):
+        # Background image
+        self.bg_image = Image.open(background_path)
+        self.bg_photo = ImageTk.PhotoImage(self.bg_image)
+        self.bg_label = tk.Label(self.root, image=self.bg_photo)
+        self.bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        # Title Label
+        self.title_label = tk.Label(self.root, text="Hangman Game", font=("Arial", 24, "bold"), fg="white", bg="#000000")
+        self.title_label.pack(pady=10)
+
+        # Display word description (clue)
+        self.clue_label = tk.Label(self.root, text=f"Clue: {self.description}", font=("Arial", 16), fg="yellow", bg="#000000")
+        self.clue_label.pack(pady=10)
+
+        # Display guessed word
+        self.word_label = tk.Label(self.root, text=" ".join(self.guessed_word), font=("Arial", 20), fg="white", bg="#000000")
+        self.word_label.pack(pady=10)
+
+        # Remaining chances and found letters
+        self.info_label = tk.Label(self.root, text=f"Chances left: {self.tries} | Found: 0/{len(self.word)}", font=("Arial", 14), fg="white", bg="#000000")
+        self.info_label.pack(pady=10)
+
+        # Hangman canvas
+        self.canvas = tk.Canvas(self.root, width=200, height=250, bg="#ffffff", highlightthickness=0)
+        self.canvas.pack(pady=10)
+        self.draw_hangman()
+
+        # Letter buttons
+        self.buttons_frame = tk.Frame(self.root, bg="#000000")
+        self.buttons_frame.pack(pady=10)
+        self.create_letter_buttons()
+
+        # Reset Button
+        self.reset_button = tk.Button(self.root, text="Restart Game", font=("Arial", 14), command=self.reset_game, bg="#333", fg="white")
+        self.reset_button.pack(pady=10)
+
+    def create_letter_buttons(self):
+        self.buttons = {}  # Store references to buttons for dynamic updates
+        for i, letter in enumerate("abcdefghijklmnopqrstuvwxyz"):
+            button = tk.Button(self.buttons_frame, text=letter, font=("Arial", 14), width=3, 
+                                command=lambda l=letter: self.guess_letter(l), bg="#555", fg="white", relief="raised")
+            button.grid(row=i // 9, column=i % 9, padx=5, pady=5)
+            self.buttons[letter] = button
+
+    def draw_hangman(self):
+        # Draw hangman based on remaining tries
+        parts = [
+            lambda: self.canvas.create_line(20, 230, 180, 230),  # Base
+            lambda: self.canvas.create_line(100, 230, 100, 20),  # Pole
+            lambda: self.canvas.create_line(100, 20, 150, 20),   # Beam
+            lambda: self.canvas.create_line(150, 20, 150, 50),   # Rope
+            lambda: self.canvas.create_oval(130, 50, 170, 90),   # Head
+            lambda: self.canvas.create_line(150, 90, 150, 160),  # Body
+            lambda: self.canvas.create_line(150, 100, 130, 140), # Left arm
+            lambda: self.canvas.create_line(150, 100, 170, 140), # Right arm
+            lambda: self.canvas.create_line(150, 160, 130, 200), # Left leg
+            lambda: self.canvas.create_line(150, 160, 170, 200), # Right leg
+        ]
+        self.canvas.delete("all")
+        for i in range(6 - self.tries):
+            parts[i]()
+
+    def guess_letter(self, letter):
+        # Disable the button and strike through the text
+        button = self.buttons[letter]
+        button.config(state=tk.DISABLED, text=f"~{letter}~", fg="red")
+
+        if letter in self.word:
+            for i, l in enumerate(self.word):
+                if l == letter:
+                    self.guessed_word[i] = letter
+            self.word_label.config(text=" ".join(self.guessed_word))
+        else:
+            self.tries -= 1
+            self.draw_hangman()
+
+        # Update the info label with remaining chances and found letters
+        correct_letters_found = len([char for char in self.guessed_word if char != "_"])
+        self.info_label.config(text=f"Chances left: {self.tries} | Found: {correct_letters_found}/{len(self.word)}")
+
+        if "_" not in self.guessed_word:
+            messagebox.showinfo("Game Over", "Congratulations! You guessed the word!")
+            self.reset_game()
+        elif self.tries == 0:
+            messagebox.showerror("Game Over", f"You lost! The word was '{self.word}'.")
+            self.reset_game()
+
+    def reset_game(self):
+        self.word = random.choice(list(word_descriptions.keys()))
+        self.description = word_descriptions[self.word]
+        self.guessed_word = ["_"] * len(self.word)
+        self.tries = 6
+        self.word_label.config(text=" ".join(self.guessed_word))
+        self.clue_label.config(text=f"Clue: {self.description}")
+        self.draw_hangman()
+
+        # Reset all buttons
+        for letter, button in self.buttons.items():
+            button.config(state=tk.NORMAL, text=letter, fg="white")
+
+        # Reset the info label
+        self.info_label.config(text=f"Chances left: {self.tries} | Found: 0/{len(self.word)}")
+
+    def resize_background(self, event):
+        # Adjust background size dynamically
+        bg_image = Image.open(background_path)
+        bg_image = bg_image.resize((event.width, event.height), Image.Resampling.LANCZOS)
+        self.bg_photo = ImageTk.PhotoImage(bg_image)
+        self.bg_label.config(image=self.bg_photo)
+
+    def on_key_press(self, event):
+        # Handle keyboard key press (only letters a-z)
+        key = event.char.lower()
+        if key in self.buttons:
+            self.guess_letter(key)
+
+# Main loop
+if __name__ == "__main__":
+    root = tk.Tk()
+    game = HangmanGame(root)
+    root.mainloop()
