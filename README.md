@@ -34,6 +34,14 @@ Every word includes a helpful clue to guide the player.
 🎨 Background Image
 
 Uses a background image.
+screenshorts:
+<img width="615" height="267" alt="image" src="https://github.com/user-attachments/assets/fb0cc5aa-30ea-448e-9d02-1044db5142d1" />
+<img width="609" height="258" alt="image" src="https://github.com/user-attachments/assets/8ccbeaed-13b2-4daa-8d26-2760b85d8916" />
+<img width="615" height="263" alt="image" src="https://github.com/user-attachments/assets/8cf2b94c-c819-4511-aa8c-62f631c9e64e" />
+
+
+
+
 
 Automatically downloads the image if it is not available.
 
